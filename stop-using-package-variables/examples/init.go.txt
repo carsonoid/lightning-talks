@@ -1,0 +1,22 @@
+package main
+
+// file: main.go
+import (
+	"github.com/carsonoid/fake/internal/mypkg"
+)
+
+// START MAIN OMIT
+func main() {
+	// call mypkg.InitClients to setup client vars
+	err := mypkg.InitClients()
+	if err != nil {
+		panic(err)
+	}
+
+    // now we can do stuff
+	err := mypkg.DoThing()
+	if err != nil {
+		panic(err)
+	}
+}
+// END MAIN OMIT

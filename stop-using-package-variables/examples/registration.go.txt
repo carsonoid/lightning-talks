@@ -1,0 +1,9 @@
+import "github.com/carsonoid/fake/mycmd/plugins"
+
+func init() {
+	// plugins.Register operates on a private package variable
+    // in the plugins package. This is more acceptable
+	plugins.Register("myplugin", myplugin{})
+}
+
+type myplugin struct {}
