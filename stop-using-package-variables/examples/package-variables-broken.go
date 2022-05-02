@@ -45,7 +45,7 @@ func startHealthProbes() {
 
 func doHeathProbe() {
 	// START BUG1 OMIT
-	// the health probe needs a longer timeout for reasons
+	// the health probe neeeds a timeout (default is 0 which means no timeout)
 	http.DefaultClient.Timeout = time.Second * 30
 	// END BUG1 OMIT
 
@@ -54,7 +54,7 @@ func doHeathProbe() {
 	url = url + "/health"
 	// END BUG2 OMIT
 
-	r, err := http.DefaultClient.Get(url)
+	r, err := http.Get(url)
 	if err != nil {
 		panic(err)
 	}

@@ -20,7 +20,7 @@ func main() {
 // START SETUP OMIT
 // file: internal/dbpkg/setup.go
 
-func setupDB(migrationsPath string) *sql.DB {
+func SetupDB(migrationsPath string) *sql.DB {
 	var db *sql.DB
     // setup database (not shown)
 
