@@ -1,0 +1,160 @@
+# Stop Using Package Variables!
+An anti-pattern in go
+
+Carson Anderson
+DevX-0, Weave
+@carson_ops
+
+https://github.com/carsonoid/lightning-talks
+
+## What is a package variable?
+
+You might know these by some other names:
+
+* Global Variables (not really)
+* Package singletons
+* That thing you use but shouldn't
+
+## The Most Basic Example
+
+.play examples/package-variables-simple.go
+
+Just like with functions, package variables are scoped across the package, not just the single file in which they are created.
+
+
+This means that they can be used in any file and *changed* in by any function in any file in the package.
+
+## A more common and interesting example
+
+.play examples/package-variables-complex.go /START OMIT/,/END OMIT/
+
+## So Why shouldn't I use them?
+
+Because they are shared, and because they can be accessed by anything in the package they can be changed
+in subtle ways that can cause either immediate bugs or nearly impossible to detect bugs.
+
+The **worst** version of this is with PUBLIC package variables! (I'm looking at you `http.DefaultClient`!)
+
+##
+
+Let's add a health probe function to our package:
+
+.code examples/package-variables-broken.go /START HEALTH OMIT/,/END HEALTH OMIT/
+
+##
+
+Let's try a new `main` that starts the probes and does two calls to `getRoot`
+
+.play examples/package-variables-broken.go /START MAIN OMIT/,/END MAIN OMIT/
+
+## Did you catch the bugs?
+
+There are actually two of them:
+
+The obvious one:
+
+.code examples/package-variables-broken.go /START BUG2 OMIT/,/END BUG2 OMIT/
+
+The subtle one:
+
+.code examples/package-variables-broken.go /START BUG1 OMIT/,/END BUG1 OMIT/
+
+## ALSO: They make testing brittle and hard
+
+.code examples/testfail.go /START OMIT/,/END OMIT/
+
+## Basic test 👎
+
+It's *very* easy to write test that can break subsequent (or concurrent!) tests:
+
+.code examples/testfail_test.go  /START EXAMPLE1 OMIT/,/END EXAMPLE1 OMIT/
+
+That leaves the overwritten client timeout around.
+
+## Fix attempt 1: 👎
+
+.code examples/testfail_test.go  /START EXAMPLE2 OMIT/,/END EXAMPLE2 OMIT/
+
+Remember, `client` is a pointer, so this copy/reset idea still leaves the client broken.
+
+## Fix attempt 2: mostly ok...
+
+.code examples/testfail_test.go  /START EXAMPLE3 OMIT/,/END EXAMPLE3 OMIT/
+
+Now we make a shallow copy of the client and do a reset. Which may or may not work depending on what we touch
+
+## Fix attempt 3: also mostly ok...
+
+.code examples/testfail_test.go  /START EXAMPLE4 OMIT/,/END EXAMPLE4 OMIT/
+
+This example defers a reset to zero, but now we have to keep it up to date with any changes to our default...
+
+## ALSO: They require you to "remember" things
+
+.code examples/init.go.txt /START MAIN OMIT/,/END MAIN OMIT/
+
+Again, this makes `mypkg` not work at all unless `InitClients` is called. And it makes it basically impossible to
+safely use that package concurrently with different configurations.
+
+## Finally, let's look at a real-world example that was *very* tricky
+
+.code examples/goose.go.txt /START MAIN OMIT/,/END MAIN OMIT/
+
+.code examples/goose.go.txt /START SETUP OMIT/,/END SETUP OMIT/
+
+Result: Migrations ran, but using the default `goose_db_version` table!
+
+## The reason becomes evident in the imports:
+
+.code examples/goose-2.go.txt /START MAIN OMIT/,/END MAIN OMIT/
+
+.code examples/goose-2.go.txt /START SETUP OMIT/,/END SETUP OMIT/
+
+## So how do you fix it?
+
+## Pass things!
+
+.code examples/package-variables-complex-fixed.go /START GET OMIT/,/END GET OMIT/
+
+Just passing things down allows more explicit control and can make for pure functions.
+
+Also the copies made during passing make us much less vulnerable to subtle bugs
+
+## A more complex refactor
+
+.code examples/package-variables-complex-fixed.go /START HEALTH OMIT/,/END HEALTH OMIT/
+
+## Finally
+
+.play examples/package-variables-complex-fixed.go /START MAIN OMIT/,/END MAIN OMIT/
+
+## Don't like all the passing?
+
+Make structs and methods!
+
+.code examples/package-variables-complex-fixed-struct.go /START HEALTH OMIT/,/END HEALTH OMIT/
+
+## Which is clean enough to use
+
+.play examples/package-variables-complex-fixed-struct.go /START MAIN OMIT/,/END MAIN OMIT/
+
+## Exception: Metadata Packages
+
+System-wide things that are not involved in business decisions like:
+
+* loggers
+* tracers
+* metrics clients
+
+These are all the kinds of things that would end up needing to be passed to nearly every function and they are not mission-critical.
+
+While having these be broken could still not be great, you won't cause major user issues if you mess them up.
+
+And NOBODY wan'ts to pass a logger to every function in your code base
+
+## Exception: Internal "registration" patterns
+
+Some code bases use package variables and `init` functions to allow you to easily extend things by dropping in a file or
+by using build tags to selectively include/exclude files.
+
+.code examples/registration.go.txt

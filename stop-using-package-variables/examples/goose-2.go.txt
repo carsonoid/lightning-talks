@@ -1,0 +1,34 @@
+package main
+
+// file: main.go
+
+
+// START MAIN OMIT
+import (
+	"github.com/github.com/pressly/goose"
+	"github.com/carsonoid/fake/internal/dbpkg"
+)
+
+func main() {
+	goose.SetTableName("svc1-migrations")
+	db := dbpkg.SetupDB("svc1/migrations")
+	// do stuff with db
+}
+// END MAIN OMIT
+
+// START SETUP OMIT
+// file: internal/dbpkg/setup.go
+
+import "github.com/github.com/pressly/goose/v3" // <--- AHA!
+
+func setupDB(migrationsPath string) *sql.DB {
+	var db *sql.DB
+    // setup database (not shown)
+
+	// run migrations
+	// (uses package variable for migrations status table name)
+	goose.Up(db, migrationsPath)
+
+	return db
+}
+// END SETUP OMIT
